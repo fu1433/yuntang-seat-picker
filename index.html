@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>云塘图书馆座位决策器</title>
+<style>
+  :root {
+    --primary: #4f6ef7;
+    --primary-dark: #3b56d4;
+    --bg: #f4f6fb;
+    --card: #ffffff;
+    --text: #2b3245;
+    --muted: #8a93a6;
+    --tag-bg: #eef1f8;
+    --gold: #f5a623;
+    --silver: #9aa5b8;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 16px;
+  }
+  .container { max-width: 640px; margin: 0 auto; }
+
+  header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 4px 20px;
+  }
+  .logo { font-size: 20px; font-weight: 700; }
+  .logo span { color: var(--primary); }
+  .lang-btn {
+    border: 1px solid #d6dbe8; background: var(--card); color: var(--text);
+    border-radius: 999px; padding: 6px 14px; font-size: 13px; cursor: pointer;
+    transition: all .2s;
+  }
+  .lang-btn:hover { border-color: var(--primary); color: var(--primary); }
+
+  .hero { text-align: center; margin-bottom: 24px; }
+  .hero h1 { font-size: 24px; margin-bottom: 8px; }
+  .hero p { color: var(--muted); font-size: 14px; }
+
+  .question-card {
+    background: var(--card); border-radius: 16px; padding: 20px;
+    margin-bottom: 14px; box-shadow: 0 2px 10px rgba(40, 55, 100, .06);
+  }
+  .question-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+  .question-sub { font-size: 12px; color: var(--muted); margin-bottom: 14px; }
+  .tags { display: flex; flex-wrap: wrap; gap: 10px; }
+  .tag {
+    background: var(--tag-bg); border: 1.5px solid transparent; color: var(--text);
+    border-radius: 999px; padding: 9px 16px; font-size: 14px; cursor: pointer;
+    transition: all .15s; user-select: none;
+  }
+  .tag:active { transform: scale(.95); }
+  .tag.active {
+    background: var(--primary); color: #fff; border-color: var(--primary-dark);
+    box-shadow: 0 3px 8px rgba(79, 110, 247, .35);
+  }
+
+  .submit-btn {
+    width: 100%; border: none; background: var(--primary); color: #fff;
+    font-size: 17px; font-weight: 600; padding: 15px; border-radius: 14px;
+    cursor: pointer; margin: 8px 0 24px; transition: all .2s;
+    box-shadow: 0 4px 14px rgba(79, 110, 247, .35);
+  }
+  .submit-btn:hover { background: var(--primary-dark); }
+
+  .result { display: none; }
+  .result.show { display: block; animation: fadeUp .4s ease; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+
+  .result-card {
+    background: var(--card); border-radius: 16px; padding: 22px;
+    margin-bottom: 14px; box-shadow: 0 2px 10px rgba(40, 55, 100, .06);
+  }
+  .zone-main { border-top: 4px solid var(--gold); }
+  .zone-alt { border-top: 4px solid var(--silver); }
+  .zone-badge { font-size: 13px; font-weight: 600; color: var(--muted); }
+  .zone-name { font-size: 22px; font-weight: 700; margin: 6px 0 4px; }
+  .zone-score {
+    display: inline-block; background: #eef7ee; color: #2e9e4f;
+    border-radius: 999px; padding: 3px 12px; font-size: 13px; font-weight: 600;
+    margin-bottom: 10px;
+  }
+  .zone-desc { font-size: 14px; color: var(--muted); line-height: 1.6; }
+  .zone-hours {
+    display: inline-block; margin-left: 6px; background: #fff4e0; color: #b07a1e;
+    border-radius: 999px; padding: 3px 12px; font-size: 12px; font-weight: 600;
+  }
+
+  .section-title { font-size: 15px; font-weight: 700; margin: 4px 0 12px; }
+  .tip-list { list-style: none; }
+  .tip-list li {
+    font-size: 14px; line-height: 1.6; padding: 10px 12px; margin-bottom: 8px;
+    background: #f7f9ff; border-radius: 10px; border-left: 3px solid var(--primary);
+  }
+  .notice {
+    background: linear-gradient(135deg, #fff7e6, #fffdf5);
+    border: 1px solid #f5dfa8; border-radius: 12px; padding: 14px 16px;
+    font-size: 14px; line-height: 1.6; color: #7a5c14;
+  }
+  .reset-btn {
+    width: 100%; border: 1px solid #d6dbe8; background: var(--card); color: var(--muted);
+    font-size: 14px; padding: 12px; border-radius: 12px; cursor: pointer; margin-bottom: 30px;
+  }
+  .reset-btn:hover { color: var(--primary); border-color: var(--primary); }
+
+  footer { text-align: center; color: var(--muted); font-size: 12px; padding: 10px 0 24px; line-height: 1.7; }
+
+  .zone-name, .zone-desc, .tip-list li, .notice { overflow-wrap: break-word; word-break: break-word; }
+
+  @media (max-width: 480px) {
+    body { padding: 12px; }
+    .hero h1 { font-size: 21px; }
+    .hero p { font-size: 13px; }
+    .logo { font-size: 17px; }
+    .question-card, .result-card { padding: 16px; }
+    .tag { font-size: 13px; padding: 8px 13px; }
+    .zone-name { font-size: 19px; }
+    .submit-btn { font-size: 16px; padding: 14px; }
+    .zone-hours { display: inline-block; margin-top: 6px; margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="logo">📚 <span data-i18n="appName">云塘选座决策器</span></div>
+    <button class="lang-btn" id="langBtn">EN</button>
+  </header>
+
+  <div class="hero">
+    <h1 data-i18n="heroTitle">今天该去哪层？</h1>
+    <p data-i18n="heroSub">基于云塘图书馆真实楼层数据 · 勾选偏好，30 秒出结果</p>
+  </div>
+
+  <div id="questions"></div>
+
+  <button class="submit-btn" id="submitBtn" data-i18n="submit">帮我选座位</button>
+
+  <div class="result" id="result">
+    <div class="result-card zone-main" id="mainCard"></div>
+    <div class="result-card zone-alt" id="altCard"></div>
+    <div class="result-card">
+      <div class="section-title" data-i18n="tipsTitle">💡 实用建议</div>
+      <ul class="tip-list" id="tipList"></ul>
+    </div>
+    <div class="notice" id="noticeBox" style="margin-bottom:14px;"></div>
+    <button class="reset-btn" id="resetBtn" data-i18n="reset">重新选择</button>
+  </div>
+
+  <footer data-i18n="footer">楼层数据：长沙理工大学云塘校区图书馆 · 纯本地运行，无网络请求</footer>
+</div>
+
+<script>
+/* ================= 真实楼层数据（云塘图书馆） =================
+ * quiet 安静度 / outlet 插座 / talk 可交谈 / crowd 拥挤度 (0~3)
+ * type: study=自习室 reading=阅览室 stack=书库 lab=机房 lounge=休息区
+ * ========================================================== */
+const ZONES = [
+  { id: 'f4room6',   quiet: 2, outlet: 3, talk: 0, crowd: 2, type: 'study',  lateNight: true  },
+  { id: 'f4digital', quiet: 2, outlet: 3, talk: 0, crowd: 1, type: 'lab',    lateNight: false },
+  { id: 'f2room12',  quiet: 2, outlet: 3, talk: 0, crowd: 3, type: 'study',  lateNight: false },
+  { id: 'f2room5',   quiet: 2, outlet: 2, talk: 0, crowd: 2, type: 'study',  lateNight: false },
+  { id: 'f3room34',  quiet: 3, outlet: 2, talk: 0, crowd: 1, type: 'study',  lateNight: false },
+  { id: 'f2journal', quiet: 3, outlet: 1, talk: 0, crowd: 0, type: 'reading',lateNight: false },
+  { id: 'f1rest',    quiet: 0, outlet: 1, talk: 3, crowd: 1, type: 'lounge', lateNight: false },
+  { id: 'f5stack',   quiet: 3, outlet: 1, talk: 0, crowd: 0, type: 'stack',  lateNight: false },
+  { id: 'f6foreign', quiet: 3, outlet: 0, talk: 0, crowd: 0, type: 'stack',  lateNight: false },
+  { id: 'f7sample',  quiet: 3, outlet: 1, talk: 0, crowd: 0, type: 'stack',  lateNight: false },
+];
+
+/* 每个选项 tag -> 维度权重 */
+const TAG_WEIGHTS = {
+  focus:    { quiet: 3, crowd: 2 },
+  computer: { outlet: 3, quiet: 1 },
+  reading:  { quiet: 2 },
+  database: {},
+  discuss:  { talk: 3, outlet: 1 },
+  outlet:   { outlet: 3 },
+  quiet:    { quiet: 3 },
+  uncrowd:  { crowd: 3 },
+  longstay: { quiet: 1 },
+  quick:    { crowd: 3 },
+};
+
+/* 周五下午 12 点后大部分库室闭馆，仅自习室开放 */
+function isFridayAfternoon() {
+  const d = new Date();
+  return d.getDay() === 5 && d.getHours() >= 12;
+}
+
+/* ================= 多语文案 ================= */
+const I18N = {
+  zh: {
+    appName: '云塘图书馆座位决策器', heroTitle: '今天该去哪层？',
+    heroSub: '基于云塘图书馆真实楼层数据 · 勾选偏好，30 秒出结果',
+    submit: '帮我选座位', reset: '重新选择', tipsTitle: '💡 实用建议',
+    footer: '楼层数据：长沙理工大学云塘校区图书馆 · 纯本地运行，无网络请求',
+    needSel: '请至少勾选一个偏好',
+    match: '匹配度', first: '🏆 首选推荐', alt: '🥈 备选方案',
+    noticeTitle: '📌 提示：', openTo: '开放至',
+    fixedTip: '东西被清理了别慌，去 B202 领（周二、周六下午 2:00–4:30 开门）。',
+    questions: [
+      { key: 'scene', title: '你今天的学习任务？', sub: '可多选',
+        tags: [
+          { id: 'focus',    label: '📖 刷题备考' },
+          { id: 'computer', label: '💻 写论文/赶作业' },
+          { id: 'reading',  label: '📚 阅读查资料' },
+          { id: 'database', label: '🗄️ 查文献/上知网' },
+          { id: 'discuss',  label: '👥 小组讨论' },
+        ]},
+      { key: 'facility', title: '你在乎哪些条件？', sub: '可多选',
+        tags: [
+          { id: 'outlet',  label: '🔌 必须有插座' },
+          { id: 'quiet',   label: '🤫 怕吵要安静' },
+          { id: 'uncrowd', label: '🧍 人少不拥挤' },
+        ]},
+      { key: 'habit', title: '今天打算待多久？', sub: '可多选',
+        tags: [
+          { id: 'longstay', label: '🕐 泡一整天/学到很晚' },
+          { id: 'quick',    label: '⚡ 1 小时内速战速决' },
+        ]},
+    ],
+    zones: {
+      f4room6:   { name: '4楼 · 学生阅览六室', hours: '23:00', desc: '全馆关门最晚的自习室，开到晚上11点，插座管够。学长学姐熬夜写论文基本都泡在这儿，期末周去晚了是真没座。' },
+      f4digital: { name: '4楼 · 数字资源阅览室', desc: '不想背电脑？来这儿，机房电脑直接上知网、万方，写论文查文献一条龙，插座也管够。' },
+      f2room12:  { name: '2楼 · 阅览一/二室', desc: '全馆最火的自习室，插座多，还能放书久坐。缺点就是太火了——10点以后基本只能捡别人挑剩的。' },
+      f2room5:   { name: '2楼 · 学生阅览五室', desc: '二楼自习室的"平替"，条件不差，比一/二室好抢那么一点。' },
+      f3room34:  { name: '3楼 · 阅览三/四室', desc: '老学长私藏层：座位多、人比二楼少一大截、插座也不缺，想安安静静学一天就来这。' },
+      f2journal: { name: '2楼 · 中文过刊阅览室', desc: '放往年期刊的阅览室，常年清净有位，适合不带电脑纯看书。' },
+      f1rest:    { name: '1楼 · 休息区/新媒体体验室', desc: '全馆唯一能敞开说话的地方，小组讨论、背出声都行。想深度学习的别来，人来人往有点闹。' },
+      f5stack:   { name: '5楼 · 社科三/四库', desc: '历史、哲学、社会学的书库，能在库里边看边坐，人少到近乎包场，就是插座只有墙边几个。' },
+      f6foreign: { name: '6楼 · 外文图书库', desc: '电气、计算机的英文原版教材都在这，只能在馆内看不能借走，工作日才开门，基本没插座。' },
+      f7sample:  { name: '7楼 · 样本书阅览室', desc: '教材工具书的"保留本"都在这，版本特别全，但一律不外借、座位也不多，适合定点查东西。' },
+    },
+    tipsPool: {
+      focus:    '刷题就把手机开勿扰，25分钟一个番茄钟，亲测效率翻倍。',
+      computer: '带电脑直接奔4楼，插座全馆最多；坐一小时记得起来活动下颈椎。',
+      reading:  '查教材、工具书去7楼样本书库，版本全，就是不能借走。',
+      database: '机房电脑直接上知网、万方，空手来也能查文献。',
+      discuss:  '讨论就去1楼休息区，在自习室说话真的会被人瞪。',
+      outlet:   '插座都藏在墙边、柱子和桌子侧面，不是每座都有，早点到先占。',
+      quiet:    '怕吵就上3楼，人比2楼少一个量级，座位还多。',
+      uncrowd:  '2楼天天爆满，5/6/7楼常年有位，怕挤就往高处走。',
+      longstay: '想学到很晚就认准4楼阅览六室，23:00才关门，全馆最晚。',
+      quick:    '就待一小会儿的话选低楼层，坐下就学，抬腿就走。',
+    },
+    zoneTips: {
+      f4room6:   '期末周这屋9点就满了，真想坐就赶开馆。',
+      f4digital: '机房电脑数量有限，下午人多可能要等位。',
+      f2room12:  '人气王不是白叫的，10点后基本只剩中间没插座的位子。',
+      f2room5:   '插座在靠墙和柱子边，进门先往这两处瞅。',
+      f3room34:  '知道的人不多，属于"去了基本有位"的宝藏层。',
+      f2journal: '常年有位，不带电脑来看书很舒服。',
+      f1rest:    '背书、朗读、讨论都随意，就是别嫌吵。',
+      f5stack:   '先充满电再来，插座真没几个。',
+      f6foreign: '记得带学生证，而且只有工作日开门。',
+      f7sample:  '书不能借出馆，查完记得归位。',
+    },
+    notices: [
+      { cond: () => isFridayAfternoon(), text: '今天周五，下午图书馆内部整理，书库基本都不开，只有自习室能用——已经帮你把书库过滤掉了。' },
+      { cond: sel => sel.has('discuss'), text: '自习室和书库都是静音区，讨论请移步1楼休息区，随便聊。' },
+      { cond: sel => sel.has('longstay'), text: '想学到晚上？4楼阅览六室开到23:00，全馆关门最晚。' },
+      { cond: sel => sel.has('outlet'), text: '热门自习室的插座位开馆没多久就没了，想占就8:30前到。' },
+      { cond: () => true, text: '插座一般藏在墙边、柱子旁和桌子侧面，选座先扫这几个位置。' },
+    ],
+    onlyOne: '符合条件的区域仅此一个。',
+  },
+  en: {
+    appName: 'Yuntang Library Seat Picker', heroTitle: 'Which floor today?',
+    heroSub: 'Real floor data from CSUST Yuntang Library · pick & go',
+    submit: 'Find My Seat', reset: 'Start Over', tipsTitle: '💡 Practical Tips',
+    footer: 'Data: CSUST Yuntang Campus Library · 100% offline, no network needed',
+    needSel: 'Please select at least one preference',
+    match: 'Match', first: '🏆 Top Pick', alt: '🥈 Runner-up',
+    noticeTitle: '📌 Note: ', openTo: 'Open until',
+    fixedTip: 'Belongings cleared away? No panic — claim them at B202 (Tue & Sat, 2:00–4:30 PM).',
+    questions: [
+      { key: 'scene', title: "Today's task?", sub: 'Multiple choice',
+        tags: [
+          { id: 'focus',    label: '📖 Exam prep' },
+          { id: 'computer', label: '💻 Essay / homework' },
+          { id: 'reading',  label: '📚 Reading / research' },
+          { id: 'database', label: '🗄️ Literature search (CNKI)' },
+          { id: 'discuss',  label: '👥 Group discussion' },
+        ]},
+      { key: 'facility', title: 'What matters to you?', sub: 'Multiple choice',
+        tags: [
+          { id: 'outlet',  label: '🔌 Power outlet needed' },
+          { id: 'quiet',   label: '🤫 Need quiet' },
+          { id: 'uncrowd', label: '🧍 Not crowded' },
+        ]},
+      { key: 'habit', title: 'How long will you stay?', sub: 'Multiple choice',
+        tags: [
+          { id: 'longstay', label: '🕐 All day / stay late' },
+          { id: 'quick',    label: '⚡ Under 1 hour' },
+        ]},
+    ],
+    zones: {
+      f4room6:   { name: '4F · Study Room 6', hours: '11 PM', desc: 'The last room to close in the whole library (23:00) with tons of outlets. This is where seniors camp out to finish papers — in exam week, latecomers get nothing.' },
+      f4digital: { name: '4F · Digital Resources Room', desc: 'Don\'t want to carry a laptop? The PCs here go straight to CNKI and Wanfang. Research and write in one stop, outlets included.' },
+      f2room12:  { name: '2F · Study Rooms 1 & 2', desc: 'The hottest study rooms in the building: plenty of outlets, and you can leave books on your seat. The catch? Everyone knows it. After 10 AM you get whatever\'s left.' },
+      f2room5:   { name: '2F · Study Room 5', desc: 'The "plan B" of 2F study rooms — just as good, slightly easier to grab a seat than Rooms 1 & 2.' },
+      f3room34:  { name: '3F · Study Rooms 3 & 4', desc: 'The seniors\' secret floor: lots of seats, way fewer people than 2F, and no shortage of outlets. Perfect for a quiet full day.' },
+      f2journal: { name: '2F · Back-issue Journals Room', desc: 'Past journal issues, always quiet and empty. Great for screen-free reading.' },
+      f1rest:    { name: '1F · Lounge & New Media Room', desc: 'The only place you can talk out loud — group discussions, reading aloud, all fine. Not for deep focus though; it\'s busy.' },
+      f5stack:   { name: '5F · Social Science Stacks 3 & 4', desc: 'History, philosophy, sociology. You can sit and read inside the stacks, often nearly empty — but outlets are wall-only.' },
+      f6foreign: { name: '6F · Foreign Language Stacks', desc: 'Original English textbooks for EE and CS live here. In-room reading only, weekdays only, and basically no outlets.' },
+      f7sample:  { name: '7F · Sample Books Room', desc: 'The reference copies of textbooks and reference books — every edition you can think of. None leave the room, and seats are few. Good for quick lookups.' },
+    },
+    tipsPool: {
+      focus:    'Phone on Do-Not-Disturb, 25-minute Pomodoros — trust us, it works.',
+      computer: 'Laptop? Go straight to 4F, best outlet coverage in the building. Stretch every hour.',
+      reading:  'For textbooks and reference books, try the 7F Sample Room — full editions, but nothing leaves the room.',
+      database: 'The lab PCs go straight to CNKI and Wanfang. Show up empty-handed, still get research done.',
+      discuss:  'Take discussions to the 1F Lounge. Talking in study rooms will earn you glares.',
+      outlet:   'Outlets hide on walls, pillars and desk sides — not every seat has one. Come early, claim yours.',
+      quiet:    'Noise-sensitive? Go 3F: way fewer people than 2F, and plenty of seats.',
+      uncrowd:  '2F is packed every day; 5F/6F/7F almost always have seats. Hate crowds? Go up.',
+      longstay: 'Staying late? 4F Study Room 6 closes at 23:00 — the latest in the whole library.',
+      quick:    'Just a quick stop? Pick a lower floor: sit down, study, leave.',
+    },
+    zoneTips: {
+      f4room6:   'Full by 9 AM in exam weeks — come at opening if you\'re serious.',
+      f4digital: 'Limited PCs; expect a short wait on busy afternoons.',
+      f2room12:  'Popular for a reason: after 10 AM, only middle seats without outlets remain.',
+      f2room5:   'Outlets are by the walls and pillars — scan those first when you walk in.',
+      f3room34:  'Still a secret to most students: show up, get a seat.',
+      f2journal: 'Almost always has seats. Cozy for laptop-free reading.',
+      f1rest:    'Read aloud, discuss, whatever — just don\'t complain about the noise.',
+      f5stack:   'Charge everything before you come. Seriously.',
+      f6foreign: 'Bring your student ID. Weekdays only.',
+      f7sample:  'Books stay in the room. Put them back after use.',
+    },
+    notices: [
+      { cond: () => isFridayAfternoon(), text: 'It\'s Friday afternoon — the library tidies up, most stacks are closed, only study rooms stay open. We\'ve filtered them out for you.' },
+      { cond: sel => sel.has('discuss'), text: 'Study rooms and stacks are silent zones. Take your discussion to the 1F Lounge and talk freely.' },
+      { cond: sel => sel.has('longstay'), text: 'Staying into the night? 4F Study Room 6 is open until 23:00 — last lights out in the building.' },
+      { cond: sel => sel.has('outlet'), text: 'Outlet seats in popular rooms vanish right after opening. Be there before 8:30 AM.' },
+      { cond: () => true, text: 'Outlets usually hide on walls, pillars and desk sides — scan those spots first.' },
+    ],
+    onlyOne: 'Only one zone matches your filters.',
+  },
+};
+
+/* ================= 状态与渲染 ================= */
+let lang = 'zh';
+const selected = new Set();
+const $ = s => document.querySelector(s);
+const t = () => I18N[lang];
+
+function renderQuestions() {
+  const box = $('#questions');
+  box.innerHTML = '';
+  t().questions.forEach(q => {
+    const card = document.createElement('div');
+    card.className = 'question-card';
+    card.innerHTML = `<div class="question-title">${q.title}</div>
+      <div class="question-sub">${q.sub}</div><div class="tags"></div>`;
+    const tagBox = card.querySelector('.tags');
+    q.tags.forEach(tag => {
+      const btn = document.createElement('button');
+      btn.className = 'tag' + (selected.has(tag.id) ? ' active' : '');
+      btn.textContent = tag.label;
+      btn.onclick = () => {
+        selected.has(tag.id) ? selected.delete(tag.id) : selected.add(tag.id);
+        btn.classList.toggle('active');
+      };
+      tagBox.appendChild(btn);
+    });
+    box.appendChild(card);
+  });
+}
+
+function applyI18n() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.dataset.i18n;
+    if (t()[key]) el.textContent = t()[key];
+  });
+  document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
+  $('#langBtn').textContent = lang === 'zh' ? 'EN' : '中文';
+  renderQuestions();
+  if ($('#result').classList.contains('show')) showResult(true);
+}
+
+/* ================= 打分逻辑 ================= */
+function computeWeights() {
+  const w = { quiet: 0, outlet: 0, talk: 0, crowd: 0 };
+  selected.forEach(id => {
+    const tw = TAG_WEIGHTS[id] || {};
+    for (const k in tw) w[k] += tw[k];
+  });
+  return w;
+}
+
+function scoreZone(z, w) {
+  let s = z.quiet * w.quiet + z.outlet * w.outlet
+        + z.talk * w.talk + (3 - z.crowd) * w.crowd;
+  if (selected.has('longstay') && z.lateNight) s += 4;   // 4楼阅览六室 23:00 关门
+  if (selected.has('database') && z.type === 'lab') s += 5; // 查文献 → 数字资源阅览室
+  return s;
+}
+
+function recommend() {
+  const w = computeWeights();
+  let pool = ZONES.slice();
+  // 硬性过滤
+  if (selected.has('discuss')) pool = pool.filter(z => z.talk >= 2);
+  if (selected.has('outlet') && !selected.has('discuss')) {
+    const f = pool.filter(z => z.outlet >= 1);
+    if (f.length) pool = f;
+  }
+  // 周五下午：书库闭馆，仅自习室/阅览室开放
+  if (isFridayAfternoon() && !selected.has('discuss')) {
+    const f = pool.filter(z => z.type !== 'stack');
+    if (f.length) pool = f;
+  }
+  const scored = pool.map(z => ({ z, score: scoreZone(z, w) }))
+                     .sort((a, b) => b.score - a.score);
+  const max = scored[0].score || 1;
+  return scored.map(s => ({
+    zone: s.z,
+    pct: Math.max(40, Math.round(60 + 40 * s.score / max)),
+  }));
+}
+
+/* ================= 结果渲染 ================= */
+function zoneCardHTML(item, badge) {
+  const zi = t().zones[item.zone.id];
+  const hours = zi.hours ? `<span class="zone-hours">🕐 ${t().openTo} ${zi.hours}</span>` : '';
+  return `<div class="zone-badge">${badge}</div>
+    <div class="zone-name">${zi.name}</div>
+    <div><span class="zone-score">${t().match} ${item.pct}%</span>${hours}</div>
+    <div class="zone-desc" style="margin-top:8px;">${zi.desc}</div>`;
+}
+
+function buildTips(topZoneId) {
+  const tips = [t().zoneTips[topZoneId]];
+  for (const id of selected) {
+    if (tips.length >= 3) break;
+    const tip = t().tipsPool[id];
+    if (tip && !tips.includes(tip)) tips.push(tip);
+  }
+  const fallback = Object.values(t().tipsPool);
+  for (let i = 0; tips.length < 3 && i < fallback.length; i++) {
+    if (!tips.includes(fallback[i])) tips.push(fallback[i]);
+  }
+  return tips.slice(0, 3);
+}
+
+function buildNotice() {
+  const hit = t().notices.find(n => n.cond(selected));
+  const n = lang === 'zh' ? ['1、', '2、'] : ['1. ', '2. '];
+  return `<b>${t().noticeTitle}</b><br>${n[0]}${hit.text}<br>${n[1]}${t().fixedTip}`;
+}
+
+function showResult(skipScroll) {
+  if (selected.size === 0) { alert(t().needSel); return; }
+  const recs = recommend();
+  $('#mainCard').innerHTML = zoneCardHTML(recs[0], t().first);
+  $('#altCard').innerHTML = recs[1]
+    ? zoneCardHTML(recs[1], t().alt)
+    : `<div class="zone-desc">${t().onlyOne}</div>`;
+  $('#tipList').innerHTML = buildTips(recs[0].zone.id).map(tip => `<li>${tip}</li>`).join('');
+  $('#noticeBox').innerHTML = buildNotice();
+  $('#result').classList.add('show');
+  if (!skipScroll) $('#result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/* ================= 事件绑定 ================= */
+$('#submitBtn').onclick = () => showResult(false);
+$('#resetBtn').onclick = () => {
+  selected.clear();
+  $('#result').classList.remove('show');
+  renderQuestions();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+$('#langBtn').onclick = () => {
+  lang = lang === 'zh' ? 'en' : 'zh';
+  applyI18n();
+};
+
+applyI18n();
+</script>
+</body>
+</html>
