@@ -176,7 +176,7 @@ const ZONES = [
 
 /* 每个选项 tag -> 维度权重 */
 const TAG_WEIGHTS = {
-  focus:    { quiet: 3, crowd: 2 },
+  focus:    { quiet: 3, crowd: 1 },
   computer: { outlet: 3, quiet: 1 },
   reading:  { quiet: 2 },
   database: {},
@@ -185,7 +185,7 @@ const TAG_WEIGHTS = {
   quiet:    { quiet: 3 },
   uncrowd:  { crowd: 3 },
   longstay: { quiet: 1 },
-  quick:    { crowd: 3 },
+  quick:    { crowd: 2 },
 };
 
 /* 周五下午 12 点后大部分库室闭馆，仅自习室开放 */
@@ -403,6 +403,13 @@ function scoreZone(z, w) {
         + z.talk * w.talk + (3 - z.crowd) * w.crowd;
   if (selected.has('longstay') && z.lateNight) s += 4;   // 4楼阅览六室 23:00 关门
   if (selected.has('database') && z.type === 'lab') s += 5; // 查文献 → 数字资源阅览室
+  // 坐下学习的场景：书库/过刊室/休息区不是正经自习空间，降权
+  const studyScene = selected.has('focus') || selected.has('computer') || selected.has('longstay');
+  if (studyScene) {
+    if (z.type === 'stack' || z.type === 'reading' || z.type === 'lounge') s -= 4;
+  } else if (selected.has('quick')) {
+    if (z.type === 'stack' || z.type === 'lounge') s -= 3;
+  }
   return s;
 }
 
